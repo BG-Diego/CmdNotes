@@ -24,7 +24,6 @@ add_command() {
      # Get current UTC timestamp in ISO 8601 format.
     # GNU date syntax
     local date_added
-    date_added=$(date --utc +"%Y-%m-%dT%H:%M:%SZ")
 
     # Ensure the data folder exists
     if [ ! -d "$script_dir/data/" ]; then
