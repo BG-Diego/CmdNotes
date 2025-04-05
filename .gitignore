@@ -1,4 +1,2 @@
-*
-!cmdnotes.sh
-!README.md
-!data
+.gitignore
+. gitmodules
