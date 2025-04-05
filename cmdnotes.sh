@@ -26,7 +26,7 @@ add_command() {
     local date_added
     date_added=$(date --utc +"%Y-%m-%dT%H:%M:%SZ")
 
-    # Verify if the data folder exists
+    # Ensure the data folder exists
     if [ ! -d "$script_dir/data/" ]; then
         mkdir -p "$script_dir/data"
         echo "📁 Folder successfully created: $script_dir"
@@ -76,6 +76,54 @@ search_command() {
     fi
 }
 
+# Function to delete a command
+delete_command() {
+    if [ ! -f "$FILE" ]; then
+        echo "The file $FILE does not exist."
+        exit 1
+    fi
+
+    local selection
+    selection=$(jq -r 'to_entries[] | "\(.key)::\(.value.description)::\(.value.command)"' "$FILE" | fzf --prompt="Select command to delete > ")
+
+    if [ -z "$selection" ]; then
+        echo "No entry was selected."
+        exit 1
+    fi
+
+
+    # Extract index from the command
+    idx="${selection%%::*}"
+
+    # Extract Description and Command
+    rest="${selection#*::}"     
+
+    # Extract only the description:
+    desc="${rest%%::*}"     
+
+    # Extract only the command:
+    cmd="${rest#*::}"
+
+    echo "Selected 🚩 Description: $desc. Command: $cmd"
+    read -p "Are you sure you want to delete this entry? [y/N]: " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        echo "Deletion aborted."
+        exit 0
+    fi
+
+    local tmpfile
+    tmpfile=$(mktemp)
+    if jq --argjson idx "$idx" 'del(.[$idx])' "$FILE" > "$tmpfile"; then
+        mv "$tmpfile" "$FILE"
+        echo "✅ Command deleted successfully from $FILE"
+    else
+        echo "❌ Failed to delete the command."
+        rm -f "$tmpfile"
+        exit 1
+    fi
+}
+
+
 # Function to display usage information
 show_usage() {
     echo "Usage: cmdnotes <operation> [arguments]"
@@ -96,7 +144,10 @@ case "$operation" in
         add_command "$@"
         ;;
     search)
-        search_command "$@"
+        search_command
+        ;;
+    delete)
+        delete_command
         ;;
     *)
         show_usage

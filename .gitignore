@@ -1,1 +1,3 @@
-data/
+*
+!cmdnotes.sh
+!README.md

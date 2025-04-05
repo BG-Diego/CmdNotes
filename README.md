@@ -16,6 +16,10 @@ cmdnotes add "ps aux"
 cmdnotes search
 # Interactive search with fzf
 # It only returns the command without copying it to the clipboard in order to type it manually to help you remember it later.
+
+cmdnotes delete
+# Interactive delete with fzf
+# You will be prompted a confirmation message with the information of the command you want to delete
 ```
 
 ## Requirements
