@@ -2,26 +2,26 @@
 # cmdnotes - Manage your own commands
 
 # Actual script path
-script_dir="$( cd "$(dirname "$0")" && pwd)"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 FILE="$script_dir/data/my_commands.txt"
 
-
 # Function to add a new command
 add_command() {
-    if (( $# < 1 )); then
+    if (($# < 1)); then
         echo "❌ Usage: cmdnotes add <command>"
         exit 1
     fi
     # Join all arguments to form the command
     local command="$*"
     read -p "Description: " description
+    read -p "Type (Makes searching easier): " type
     if [ -z "$description" ]; then
         echo "❌ You must enter a description."
         exit 1
     fi
 
-     # Get current UTC timestamp in ISO 8601 format.
+    # Get current UTC timestamp in ISO 8601 format.
     # GNU date syntax
     local date_added
 
@@ -31,18 +31,18 @@ add_command() {
         echo "📁 Folder successfully created: $script_dir"
     fi
 
-      # If the file does not exist, create an empty JSON array.
+    # If the file does not exist, create an empty JSON array.
     if [ ! -f "$FILE" ]; then
-        echo "[]" > "$FILE"
+        echo "[]" >"$FILE"
     fi
 
-     # Append the new entry to the JSON array using jq.
+    # Append the new entry to the JSON array using jq.
     # Create a temporary file to hold the updated JSON.
     local tmpfile
     tmpfile=$(mktemp)
 
-    if jq --arg desc "$description" --arg cmd "$command" \
-        '. += [{"description": $desc, "command": $cmd}]' "$FILE" > "$tmpfile"; then
+    if jq --arg desc "$description" --arg cmd "$command" --arg typ "$type" \
+        '. += [{"description": $desc, "command": $cmd, "type":$typ }]' "$FILE" >"$tmpfile"; then
 
         # Only move the temp file if jq succeeded
         mv "$tmpfile" "$FILE"
@@ -65,14 +65,26 @@ search_command() {
 
     # Use jq to extract each entry as "description :: command"
     local selection
-    selection=$(jq -r '.[] | "\(.description):: \(.command)"' "$FILE" | fzf --multi --prompt="Search command > ")
 
-    if [ -n "$selection" ]; then
-         # Print only the command.
-        echo -e "\nCommand:\n🔹${selection#*:: }\n"
+    if [[ "$1" == "-t" ]]; then
+        shift
+        TYPE="$1"
+        # Filtramos el JSON por type y extraemos descripción::comando
+        items=$(jq -r --arg t "$TYPE" \
+            '.[] | select(.type == $t) | "\(.description):: \(.command)"' \
+            "$FILE")
     else
-        echo "No entry was selected."
+        items=$(jq -r '.[] | "\(.description):: \(.command)"' "$FILE")
     fi
+
+    # Lanzamos fzf sobre los ítems filtrados
+    selection=$(printf "%s\n" "$items" | fzf --prompt="Search command > ")
+    [[ -z "$selection" ]] && {
+        echo "No se seleccionó nada."
+        exit 0
+    }
+
+    echo -e "\nCommand:\n🔹${selection#*:: }\n"
 }
 
 # Function to delete a command
@@ -90,15 +102,14 @@ delete_command() {
         exit 1
     fi
 
-
     # Extract index from the command
     idx="${selection%%::*}"
 
     # Extract Description and Command
-    rest="${selection#*::}"     
+    rest="${selection#*::}"
 
     # Extract only the description:
-    desc="${rest%%::*}"     
+    desc="${rest%%::*}"
 
     # Extract only the command:
     cmd="${rest#*::}"
@@ -112,7 +123,7 @@ delete_command() {
 
     local tmpfile
     tmpfile=$(mktemp)
-    if jq --argjson idx "$idx" 'del(.[$idx])' "$FILE" > "$tmpfile"; then
+    if jq --argjson idx "$idx" 'del(.[$idx])' "$FILE" >"$tmpfile"; then
         mv "$tmpfile" "$FILE"
         echo "✅ Command deleted successfully from $FILE"
     else
@@ -122,7 +133,6 @@ delete_command() {
     fi
 }
 
-
 # Function to display usage information
 show_usage() {
     echo "Usage: cmdnotes <operation> [arguments]"
@@ -131,7 +141,7 @@ show_usage() {
 }
 
 # Main processing: Check that an operation was provided
-if (( $# < 1 )); then
+if (($# < 1)); then
     show_usage
 fi
 
@@ -139,17 +149,16 @@ operation="$1"
 shift
 
 case "$operation" in
-    add)
-        add_command "$@"
-        ;;
-    search)
-        search_command
-        ;;
-    delete)
-        delete_command
-        ;;
-    *)
-        show_usage
-        ;;
+add)
+    add_commad "$@"
+    ;;
+search)
+    search_command "$@"
+    ;;
+delete)
+    delete_command
+    ;;
+*)
+    show_usage
+    ;;
 esac
-
